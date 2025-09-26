@@ -1,0 +1,24 @@
+{
+  "name": "crud-mongodb", 
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon --watch . server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "API de eventos (CRUD) en Express con Mongoose",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "express-validator": "^7.2.1",
+    "mongoose": "^8.18.2",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

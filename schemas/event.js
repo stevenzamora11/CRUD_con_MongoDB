@@ -12,6 +12,6 @@ const EventSchema = new mongoose.Schema({
     versionKey: false
 });
 
-EventSchema.index({date: -1});
+EventSchema.index({type: 1, date: -1});
 
 module.exports = mongoose.model('Event', EventSchema);

@@ -9,41 +9,60 @@ const bail400 = (req, res) => {
 };
 
 exports.list = async (req, res) => {
-    const bad = bail400(req, res); if(bad) return;
+    const bad = bail400(req, res); if (bad) return;
 
-    const page = parseInt(req.query.page || '1', 10);
-    const limit = parseInt(req.query.limit || '10', 10);
-    const sortBy = (req.query.sort || 'fecha'); // Fecha / Monto
-    const order = (req.query.order || 'desc') === 'asc' ? 1 : -1;
+    const page  = Math.max(parseInt(req.query.page  || '1', 10) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit || '10', 10) || 10, 1);
+    const sortBy = req.query.sort || 'fecha'; // fecha|monto
+    const order  = (req.query.order || 'desc') === 'asc' ? 1 : -1;
 
     const filter = {};
-    if(req.query.type) filter.type = req.query.type;
 
-    if(req.query.year || req.query.month) {
-        const y = parseInt(req.query.year || '1970', 10);
-        const m = parseInt(req.query.month || '1', 10);
-        const from = new Date(y, (req.query.month ? m - 1 : 0), 1);
-        const to = new Date(y, (req.query.month ? m : 12), 1);
-        filter.date = {$gte: from, $lt: to};
-    };
+    if (req.query.type === 'ingreso' || req.query.type === 'egreso') {
+        filter.type = req.query.type;
+    }
 
-    if(req.query.min || req.query.max) {
+    if (req.query.year || req.query.month) {
+        const y = parseInt(req.query.year  || `${new Date().getUTCFullYear()}`, 10);
+        const m = req.query.month ? parseInt(req.query.month, 10) : undefined;
+
+        if (!Number.isNaN(y)) {
+            if (m && !Number.isNaN(m) && m >= 1 && m <= 12) {
+                const from = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0)); // 1ro del mes 
+                const to   = new Date(Date.UTC(y, m,     1, 0, 0, 0, 0)); // 1ro mes siguiente 
+                filter.date = { $gte: from, $lt: to };
+            } else if (!m) {
+                const from = new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0));
+                const to   = new Date(Date.UTC(y + 1, 0, 1, 0, 0, 0, 0));
+                filter.date = { $gte: from, $lt: to };
+            }
+        }
+    }
+
+    if (req.query.min || req.query.max) {
         filter.amount = {};
-        if(req.query.min) filter.amount.$gte = Number(req.query.min);
-        if(req.query.max) filter.amount.$lte = Number(req.query.max);
-    };
+        if (req.query.min) filter.amount.$gte = Number(req.query.min);
+        if (req.query.max) filter.amount.$lte = Number(req.query.max);
+    }
 
-    const sortMap = {fecha: 'date', monto: 'amount'};
-    const sort = {[sortMap[sortBy] || 'date']: order};
-    const skip = (Math.max(page, 1)-1) * (Math.max(limit, 1));
+    const sortMap = { fecha: 'date', monto: 'amount' };
+    const sortObj = { [sortMap[sortBy] || 'date']: order };
+    const skip = (page - 1) * limit;
 
     const [items, total] = await Promise.all([
-        Event.find(filter).sort(sort).skip(skip).limit(limit).lean().exec(),
+        Event.find(filter).sort(sortObj).skip(skip).limit(limit).lean().exec(),
         Event.countDocuments(filter)
     ]);
 
-    res.status(200).json({code: 'OK', message: 'Lista de Events', page, limit, total, totalPages: Math.max(1, Math.ceil(total/limit)), data: items});
+    return res.status(200).json({
+        code: 'OK',
+        message: 'Lista de Events',
+        page, limit, total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        data: items
+    });
 };
+
 
 exports.getById = async (req, res) => {
     const bad = bail400(req, res); if(bad) return;
@@ -87,7 +106,7 @@ exports.remove = async (req, res) => {
     const bad = bail400(req, res); if(bad) return;
 
     const deleted = await Event.findByIdAndDelete(req.params.id);
-    if(!daleted) return res.status(404).json({code: 'NF', message: 'Event no encontrado'});
+    if(!deleted) return res.status(404).json({code: 'NF', message: 'Event no encontrado'});
 
     res.status(204).send();
 };
